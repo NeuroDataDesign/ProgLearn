@@ -290,6 +290,115 @@ class LifelongClassificationForest(ClassificationProgressiveLearner):
             num_transformers=n_estimators,
         )
 
+    def update_task(
+        self,
+        X,
+        y,
+        task_id=None,
+        n_estimators="default",
+        tree_construction_proportion="default",
+        kappa="default",
+        max_depth="default",
+        inputclasses=None,
+    ):
+        """
+        updates a task with id task_id, max tree depth max_depth, given input data matrix X
+        and output data matrix y, to the Lifelong Classification Forest. Also splits
+        data for training and voting based on tree_construction_proportion and uses the
+        value of kappa to determine whether the learner will have
+        finite sample correction.
+
+        Parameters
+        ----------
+        X : ndarray
+            The input data matrix.
+
+        y : ndarray
+            The output (response) data matrix.
+
+        task_id : obj, default=None
+            The id corresponding to the task being added.
+
+        n_estimators : int or str, default='default'
+            The number of trees used for the given task.
+
+        tree_construction_proportion : int or str, default='default'
+            The proportions of the input data set aside to train each decision
+            tree. The remainder of the data is used to fill in voting posteriors.
+            The default is used if 'default' is provided.
+
+        kappa : float or str, default='default'
+            The coefficient for finite sample correction.
+            The default is used if 'default' is provided.
+
+        max_depth : int or str, default='default'
+            The maximum depth of a tree in the Lifelong Classification Forest.
+            The default is used if 'default' is provided.
+
+        Returns
+        -------
+        self : LifelongClassificationForest
+            The object itself.
+        """
+        if n_estimators == "default":
+            n_estimators = self.default_n_estimators
+        if tree_construction_proportion == "default":
+            tree_construction_proportion = self.default_tree_construction_proportion
+        if kappa == "default":
+            kappa = self.default_kappa
+        if max_depth == "default":
+            max_depth = self.default_max_depth
+
+        X, y = check_X_y(X, y)
+
+        print("unique y values in update_task: " + str(np.unique(y)))
+
+        return super().update_task(
+            X,
+            y,
+            inputclasses=inputclasses,
+            task_id=task_id,
+            transformer_voter_decider_split=[
+                tree_construction_proportion,
+                1 - tree_construction_proportion,
+                0,
+            ],
+            num_transformers=n_estimators,
+            transformer_kwargs={"kwargs": {"max_depth": max_depth}},
+            voter_kwargs={
+                "classes": np.unique(y),
+                "kappa": kappa,
+            },
+            decider_kwargs={"classes": np.unique(y)},
+        )
+
+    def update_transformer(
+        self,
+        X,
+        y,
+        inputclasses=None,
+        transformer_id=None,
+        n_estimators="default",
+        max_depth="default",
+    ):
+
+        print("update transformer in forest.py is being called!")
+
+        if n_estimators == "default":
+            n_estimators = self.default_n_estimators
+        if max_depth == "default":
+            max_depth = self.default_max_depth
+
+        X, y = check_X_y(X, y)
+        return super().update_transformer(
+            X,
+            y,
+            inputclasses=inputclasses,
+            transformer_kwargs={"kwargs": {"max_depth": max_depth}},
+            transformer_id=transformer_id,
+            num_transformers=n_estimators,
+        )
+
     def predict_proba(self, X, task_id):
         """
         estimates class posteriors under task_id for each example in input data X.
